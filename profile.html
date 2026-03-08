@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Profile — CSK Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--green:#25D366;--dark-green:#128C7E;--teal:#075E54;--bg:#111b21;--surface:#1f2c34;--border:#2a3942;--text:#e9edef;--sub:#8696a0}
+body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);min-height:100vh}
+
+.hdr{background:linear-gradient(135deg,#075E54,#0a3d35);padding:12px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.back{background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;padding:4px 8px;border-radius:8px;transition:.15s}
+.back:hover{background:rgba(255,255,255,.1)}
+.hdr-title{font-size:1.1rem;font-weight:700;color:#fff}
+
+/* Avatar section */
+.avatar-section{background:linear-gradient(135deg,var(--teal),#0a2d26);padding:36px 24px 44px;display:flex;justify-content:center;position:relative}
+.av-wrap{position:relative;cursor:pointer}
+.big-av{width:110px;height:110px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:2.8rem;color:#fff;box-shadow:0 6px 28px rgba(0,0,0,.4);overflow:hidden;border:3px solid rgba(255,255,255,.2)}
+.big-av img{width:100%;height:100%;object-fit:cover}
+.av-edit{position:absolute;bottom:4px;right:4px;width:34px;height:34px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;box-shadow:0 2px 8px rgba(0,0,0,.4);cursor:pointer;transition:.2s}
+.av-edit:hover{background:var(--dark-green);transform:scale(1.1)}
+.av-upload-hint{text-align:center;color:rgba(255,255,255,.5);font-size:.72rem;margin-top:12px;letter-spacing:.3px}
+
+/* Sections */
+.section{background:var(--surface);margin-top:6px;padding:18px 20px;border-top:1px solid rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.04)}
+.sec-label{font-size:.67rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--green);margin-bottom:12px}
+.field-wrap{position:relative}
+.field{width:100%;padding:11px 0;background:transparent;border:none;border-bottom:2px solid var(--border);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:1rem;outline:none;transition:.2s}
+.field:focus{border-bottom-color:var(--green)}
+.field::placeholder{color:var(--sub)}
+.char-count{position:absolute;right:0;bottom:14px;font-size:.65rem;color:var(--sub)}
+
+.info-row{padding:11px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.88rem;color:var(--sub);display:flex;align-items:center;gap:8px}
+.info-row span{color:var(--text);font-weight:600}
+
+.save-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--green),var(--dark-green));border:none;border-radius:14px;color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;margin-top:20px;transition:.2s;box-shadow:0 4px 16px rgba(37,211,102,.3)}
+.save-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(37,211,102,.4)}
+.save-btn:active{transform:translateY(0)}
+.save-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* Color picker */
+.color-section{margin-top:6px;background:var(--surface);padding:18px 20px}
+.colors{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.color-dot{width:32px;height:32px;border-radius:50%;cursor:pointer;transition:.2s;border:3px solid transparent}
+.color-dot:hover{transform:scale(1.15)}
+.color-dot.selected{border-color:rgba(255,255,255,.8);transform:scale(1.1)}
+
+.toast-msg{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface);border:1px solid var(--border);padding:11px 22px;border-radius:14px;font-size:.85rem;color:var(--green);transition:.3s;z-index:99;font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,.4)}
+.toast-msg.show{transform:translateX(-50%) translateY(0)}
+
+/* Crop overlay */
+.crop-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:200;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.crop-overlay.open{display:flex}
+.crop-canvas{border-radius:50%;overflow:hidden;border:3px solid var(--green)}
+.crop-btns{display:flex;gap:12px}
+.crop-btn{padding:10px 24px;border-radius:24px;border:none;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.9rem}
+.crop-cancel{background:rgba(255,255,255,.1);color:#fff}
+.crop-confirm{background:var(--green);color:#fff}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <button class="back" onclick="location.href='/home'">←</button>
+  <span class="hdr-title">My Profile</span>
+</div>
+
+<div class="avatar-section">
+  <div>
+    <div class="av-wrap" onclick="document.getElementById('dp-input').click()">
+      <div class="big-av" id="big-av" style="background:{{ me.color }}">
+        {% if me.dp %}<img src="{{ me.dp }}" id="av-img" alt="">{% else %}<span id="av-letter">{{ me.avatar_letter }}</span>{% endif %}
+      </div>
+      <div class="av-edit">📷</div>
+    </div>
+    <div class="av-upload-hint">Tap to change photo</div>
+  </div>
+</div>
+<input type="file" id="dp-input" accept="image/*" style="display:none" onchange="handleDP(this)">
+
+<div class="section">
+  <div class="sec-label">Your Name</div>
+  <div class="field-wrap">
+    <input class="field" id="name" type="text" value="{{ me.name }}" maxlength="25" placeholder="Apna naam..." oninput="updateCount('name','nc',25)">
+    <span class="char-count" id="nc">{{ me.name|length }}/25</span>
+  </div>
+</div>
+
+<div class="section">
+  <div class="sec-label">About</div>
+  <div class="field-wrap">
+    <input class="field" id="about" type="text" value="{{ me.about }}" maxlength="100" placeholder="About likhna..." oninput="updateCount('about','ac',100)">
+    <span class="char-count" id="ac">{{ me.about|length }}/100</span>
+  </div>
+</div>
+
+<div class="color-section">
+  <div class="sec-label">Avatar Color</div>
+  <div class="colors" id="colors">
+    {% for c in ['#25D366','#00BCD4','#FF7043','#AB47BC','#42A5F5','#66BB6A','#FFA726','#EC407A','#26C6DA','#8D6E63','#ef5350','#7e57c2'] %}
+    <div class="color-dot {% if c == me.color %}selected{% endif %}" style="background:{{ c }}" data-c="{{ c }}" onclick="pickColor('{{ c }}',this)"></div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="section">
+  <div class="sec-label">Phone Number</div>
+  <div class="info-row">📱 <span>{{ me.phone }}</span></div>
+  <button class="save-btn" id="save-btn" onclick="save()">Save Changes ✓</button>
+</div>
+
+<div class="toast-msg" id="t">Profile updated! ✓</div>
+
+<!-- Crop Overlay -->
+<div class="crop-overlay" id="crop-overlay">
+  <canvas id="crop-canvas" width="200" height="200" class="crop-canvas"></canvas>
+  <div style="color:rgba(255,255,255,.6);font-size:.8rem">Drag to position</div>
+  <div class="crop-btns">
+    <button class="crop-btn crop-cancel" onclick="cancelCrop()">Cancel</button>
+    <button class="crop-btn crop-confirm" onclick="confirmCrop()">Use Photo ✓</button>
+  </div>
+</div>
+
+<script>
+let selectedColor = '{{ me.color }}';
+let pendingDP = null;
+let cropImg = null, cropX=0, cropY=0, cropSize=0, isDragging=false, dragStartX=0, dragStartY=0, imgNatW=0, imgNatH=0;
+
+function updateCount(fid,cid,max){
+  const v=document.getElementById(fid).value.length;
+  document.getElementById(cid).textContent=v+'/'+max;
+}
+
+function pickColor(c,el){
+  selectedColor=c;
+  document.querySelectorAll('.color-dot').forEach(d=>d.classList.remove('selected'));
+  el.classList.add('selected');
+  const av=document.getElementById('big-av');
+  av.style.background=c;
+}
+
+// DP Upload & Crop
+function handleDP(input){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    cropImg=new Image();
+    cropImg.onload=()=>{
+      imgNatW=cropImg.naturalWidth; imgNatH=cropImg.naturalHeight;
+      cropSize=Math.min(imgNatW,imgNatH);
+      cropX=(imgNatW-cropSize)/2; cropY=(imgNatH-cropSize)/2;
+      drawCrop();
+      document.getElementById('crop-overlay').classList.add('open');
+    };
+    cropImg.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+}
+
+function drawCrop(){
+  const canvas=document.getElementById('crop-canvas');
+  const ctx=canvas.getContext('2d');
+  const S=200;
+  ctx.clearRect(0,0,S,S);
+  const scale=S/cropSize;
+  ctx.drawImage(cropImg, cropX, cropY, cropSize, cropSize, 0, 0, S, S);
+}
+
+const canvas=document.getElementById('crop-canvas');
+canvas.addEventListener('mousedown',e=>{ isDragging=true; dragStartX=e.offsetX; dragStartY=e.offsetY; });
+canvas.addEventListener('mousemove',e=>{
+  if(!isDragging) return;
+  const scale=cropSize/200;
+  cropX-=(e.offsetX-dragStartX)*scale; cropY-=(e.offsetY-dragStartY)*scale;
+  cropX=Math.max(0,Math.min(imgNatW-cropSize,cropX));
+  cropY=Math.max(0,Math.min(imgNatH-cropSize,cropY));
+  dragStartX=e.offsetX; dragStartY=e.offsetY;
+  drawCrop();
+});
+canvas.addEventListener('mouseup',()=>isDragging=false);
+canvas.addEventListener('touchstart',e=>{ const t=e.touches[0]; isDragging=true; dragStartX=t.clientX; dragStartY=t.clientY; },{passive:true});
+canvas.addEventListener('touchmove',e=>{
+  if(!isDragging) return;
+  const t=e.touches[0]; const scale=cropSize/200;
+  cropX-=(t.clientX-dragStartX)*scale; cropY-=(t.clientY-dragStartY)*scale;
+  cropX=Math.max(0,Math.min(imgNatW-cropSize,cropX));
+  cropY=Math.max(0,Math.min(imgNatH-cropSize,cropY));
+  dragStartX=t.clientX; dragStartY=t.clientY;
+  drawCrop();
+},{passive:true});
+canvas.addEventListener('touchend',()=>isDragging=false);
+
+function confirmCrop(){
+  pendingDP=document.getElementById('crop-canvas').toDataURL('image/jpeg',0.85);
+  // Preview
+  const av=document.getElementById('big-av');
+  av.innerHTML=`<img src="${pendingDP}" style="width:100%;height:100%;object-fit:cover">`;
+  document.getElementById('crop-overlay').classList.remove('open');
+}
+function cancelCrop(){ document.getElementById('crop-overlay').classList.remove('open'); pendingDP=null; }
+
+async function save(){
+  const name=document.getElementById('name').value.trim();
+  const about=document.getElementById('about').value.trim();
+  if(!name){ alert('Naam zaroori hai!'); return; }
+  const btn=document.getElementById('save-btn');
+  btn.disabled=true; btn.textContent='Saving...';
+  
+  const payload={name, about, color: selectedColor};
+  if(pendingDP) payload.dp=pendingDP;
+  
+  await fetch('/update_profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  
+  btn.disabled=false; btn.textContent='Save Changes ✓';
+  const t=document.getElementById('t');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+  pendingDP=null;
+  
+  // Update letter
+  const letter=name[0].toUpperCase();
+  const letterEl=document.getElementById('av-letter');
+  if(letterEl) letterEl.textContent=letter;
+}
+</script>
+</body>
+</html>

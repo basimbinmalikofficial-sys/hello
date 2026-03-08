@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>CSK Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--green:#25D366;--dark-green:#128C7E;--teal:#075E54;--bg:#111b21;--surface:#1f2c34;--border:#2a3942;--text:#e9edef;--sub:#8696a0;--hover:#2a3942}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);display:flex;flex-direction:column}
+
+/* Header */
+.hdr{background:linear-gradient(135deg,#075E54,#0a3d35);padding:0;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 0}
+.hdr-left{display:flex;align-items:center;gap:10px}
+.hdr-dp{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;color:#fff;cursor:pointer;overflow:hidden;flex-shrink:0}
+.hdr-dp img{width:100%;height:100%;object-fit:cover}
+.hdr-title{font-size:1.25rem;font-weight:800;color:#fff;letter-spacing:-.3px}
+.hdr-actions{display:flex;gap:4px}
+.hdr-btn{width:38px;height:38px;border-radius:50%;border:none;background:transparent;color:rgba(255,255,255,.85);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
+.hdr-btn:hover{background:rgba(255,255,255,.1)}
+
+/* Tabs */
+.tabs{display:flex;padding:0;margin-top:6px;border-bottom:1px solid rgba(255,255,255,.1)}
+.tab{flex:1;padding:10px 0;font-size:.76rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:rgba(255,255,255,.55);cursor:pointer;border-bottom:3px solid transparent;transition:.2s;text-align:center}
+.tab.active{color:#fff;border-bottom-color:#fff}
+
+/* Search */
+.search-bar{padding:8px 12px;background:var(--surface);flex-shrink:0}
+.search-inner{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:10px;padding:8px 14px}
+.search-inner input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem}
+.search-inner input::placeholder{color:var(--sub)}
+
+/* List */
+.tab-content{display:none;flex:1;overflow:hidden;flex-direction:column}
+.tab-content.active{display:flex}
+.list{flex:1;overflow-y:auto}
+.list::-webkit-scrollbar{width:3px}
+.list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+.contact{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer;transition:.15s;text-decoration:none;color:inherit}
+.contact:hover{background:var(--hover)}
+.contact:active{background:var(--border)}
+
+.av{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;color:#fff;flex-shrink:0;position:relative;overflow:hidden;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.av img{width:100%;height:100%;object-fit:cover}
+.online-dot{position:absolute;bottom:2px;right:2px;width:13px;height:13px;background:var(--green);border-radius:50%;border:2px solid var(--surface);z-index:1}
+
+.info{flex:1;min-width:0}
+.row1{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.cname{font-weight:700;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctime{font-size:.67rem;color:var(--sub);flex-shrink:0;margin-left:8px}
+.row2{display:flex;justify-content:space-between;align-items:center}
+.clast{font-size:.8rem;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.badge{background:var(--green);color:#fff;font-size:.63rem;font-weight:700;min-width:19px;height:19px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 5px;margin-left:6px;flex-shrink:0}
+
+/* Empty */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 32px;gap:14px;color:var(--sub);text-align:center}
+.empty-ico{font-size:3.5rem}
+.empty-t{font-size:.95rem;font-weight:700;color:var(--text)}
+.empty-s{font-size:.8rem;line-height:1.7}
+
+/* FAB */
+.fab{position:fixed;bottom:22px;right:18px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--dark-green));border:none;color:#fff;font-size:1.4rem;cursor:pointer;box-shadow:0 4px 20px rgba(37,211,102,.45);transition:.2s;display:flex;align-items:center;justify-content:center;z-index:50}
+.fab:hover{transform:scale(1.08) rotate(5deg)}
+.fab:active{transform:scale(.95)}
+
+/* Bottom sheet */
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
+.sheet-bg.open{display:flex}
+.sheet{background:var(--surface);border-radius:20px 20px 0 0;width:min(500px,100%);max-height:80vh;display:flex;flex-direction:column;animation:slideUp .25s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet-hdr{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.sheet-title{font-weight:700;font-size:.95rem}
+.sheet-close{background:none;border:none;color:var(--sub);font-size:1.2rem;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:.15s}
+.sheet-close:hover{background:var(--border)}
+.sheet-search{padding:10px 16px;border-bottom:1px solid var(--border)}
+.sheet-search input{width:100%;padding:10px 14px;background:var(--bg);border:none;border-radius:10px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;outline:none}
+.sheet-list{overflow-y:auto;flex:1}
+
+/* Group create sheet */
+.group-sheet{background:var(--surface);border-radius:20px 20px 0 0;width:min(500px,100%);max-height:85vh;display:flex;flex-direction:column;animation:slideUp .25s ease}
+.gs-input{width:100%;padding:12px 14px;background:var(--bg);border:none;border-radius:10px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:.9rem;outline:none;border:2px solid var(--border);transition:.2s}
+.gs-input:focus{border-color:var(--green)}
+.member-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(37,211,102,.15);border:1px solid rgba(37,211,102,.3);border-radius:20px;padding:4px 10px 4px 4px;font-size:.78rem;margin:3px}
+.member-chip .av-sm{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.6rem;color:#fff}
+.member-chip .rm{cursor:pointer;color:var(--sub);font-size:.9rem;line-height:1}
+.member-chip .rm:hover{color:#ff6b6b}
+.create-btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--green),var(--dark-green));border:none;border-radius:12px;color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer;transition:.2s}
+.create-btn:hover{transform:translateY(-1px)}
+
+/* Toast */
+.toast{position:fixed;top:12px;left:50%;transform:translateX(-50%) translateY(-100px);background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:10px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:200;transition:transform .3s cubic-bezier(.34,1.56,.64,1);min-width:280px;max-width:92vw;cursor:pointer}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.t-av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;flex-shrink:0;font-size:.9rem;overflow:hidden}
+.t-av img{width:100%;height:100%;object-fit:cover}
+.t-name{font-size:.78rem;font-weight:700;color:var(--green)}
+.t-text{font-size:.74rem;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+
+/* Menu */
+.menu{position:absolute;right:12px;top:58px;background:var(--surface);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.5);z-index:60;min-width:170px;overflow:hidden;display:none;border:1px solid var(--border)}
+.menu.open{display:block;animation:fadeIn .15s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.menu a{display:flex;align-items:center;gap:10px;padding:12px 18px;color:var(--text);text-decoration:none;font-size:.87rem;transition:.15s}
+.menu a:hover{background:var(--hover)}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="hdr-left">
+      <div class="hdr-dp" style="background:{{ me.color }}" onclick="location.href='/profile'">
+        {% if me.dp %}<img src="{{ me.dp }}" alt="">{% else %}{{ me.avatar_letter }}{% endif %}
+      </div>
+      <span class="hdr-title">CSK Chat</span>
+    </div>
+    <div class="hdr-actions" style="position:relative">
+      <button class="hdr-btn" onclick="openGroupSheet()" title="New Group">👥</button>
+      <button class="hdr-btn" onclick="toggleMenu()" title="Menu">⋮</button>
+      <div class="menu" id="menu">
+        <a href="/profile">👤 My Profile</a>
+        <a href="/logout">🚪 Logout</a>
+      </div>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('chats',this)">Chats</div>
+    <div class="tab" onclick="switchTab('groups',this)">Groups</div>
+  </div>
+</div>
+
+<!-- Search -->
+<div class="search-bar">
+  <div class="search-inner">
+    <span style="color:var(--sub)">🔍</span>
+    <input type="text" id="srch" placeholder="Search..." oninput="filterList()">
+  </div>
+</div>
+
+<!-- Chats Tab -->
+<div class="tab-content active" id="tab-chats">
+  <div class="list" id="list">
+    {% if contacts %}
+      {% for c in contacts %}
+      <a class="contact" href="/chat/{{ c.phone }}" id="c-{{ c.phone|replace('+','') }}">
+        <div class="av" style="background:{{ c.color }}">
+          {% if c.dp %}<img src="{{ c.dp }}" alt="">{% else %}{{ c.avatar_letter }}{% endif %}
+          {% if c.online %}<div class="online-dot"></div>{% endif %}
+        </div>
+        <div class="info">
+          <div class="row1">
+            <span class="cname">{{ c.name }}</span>
+            <span class="ctime">{{ c.last_time }}</span>
+          </div>
+          <div class="row2">
+            <span class="clast">{{ c.last_msg if c.last_msg else 'Tap to chat' }}</span>
+            {% if c.unread %}<span class="badge" id="b-{{ c.phone|replace('+','') }}">{{ c.unread }}</span>{% endif %}
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    {% else %}
+      <div class="empty">
+        <div class="empty-ico">💬</div>
+        <div class="empty-t">Koi chat nahi abhi</div>
+        <div class="empty-s">✏️ button dabao aur<br>kisi ko message karo!</div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Groups Tab -->
+<div class="tab-content" id="tab-groups">
+  <div class="list" id="glist">
+    {% if my_groups %}
+      {% for g in my_groups %}
+      <a class="contact" href="/group/{{ g.id }}">
+        <div class="av" style="background:{{ g.color }}">{{ g.avatar_letter }}</div>
+        <div class="info">
+          <div class="row1">
+            <span class="cname">{{ g.name }}</span>
+            <span class="ctime">{{ g.last_time }}</span>
+          </div>
+          <div class="row2">
+            <span class="clast">{{ g.last_msg if g.last_msg else 'Group chat' }}</span>
+            {% if g.unread %}<span class="badge">{{ g.unread }}</span>{% endif %}
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    {% else %}
+      <div class="empty">
+        <div class="empty-ico">👥</div>
+        <div class="empty-t">Koi group nahi</div>
+        <div class="empty-s">👥 button se naya group banao!</div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openSheet()" title="New Chat">✏️</button>
+
+<!-- New Chat Sheet -->
+<div class="sheet-bg" id="sheet-bg" onclick="bgClick(event,'sheet-bg')">
+  <div class="sheet">
+    <div class="sheet-hdr">
+      <span class="sheet-title">New Chat</span>
+      <button class="sheet-close" onclick="closeSheet()">✕</button>
+    </div>
+    <div class="sheet-search">
+      <input type="text" id="ss" placeholder="Naam ya number dhundo..." oninput="filterSheet()">
+    </div>
+    <div class="sheet-list" id="sl">
+      {% for u in all_users %}
+      {% if u.phone != me.phone %}
+      <a class="contact su" href="/chat/{{ u.phone }}" data-n="{{ u.name|lower }}" data-p="{{ u.phone }}">
+        <div class="av" style="background:{{ u.color }}">
+          {% if u.dp %}<img src="{{ u.dp }}" alt="">{% else %}{{ u.avatar_letter }}{% endif %}
+        </div>
+        <div class="info">
+          <div class="row1"><span class="cname">{{ u.name }}</span></div>
+          <div class="row2"><span class="clast">{{ u.phone }}</span></div>
+        </div>
+      </a>
+      {% endif %}
+      {% endfor %}
+      {% if all_users|length <= 1 %}
+      <div class="empty" style="padding:24px">
+        <div class="empty-ico">👥</div>
+        <div class="empty-s">Abhi koi user nahi<br>Dost ko invite karo!</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Create Group Sheet -->
+<div class="sheet-bg" id="grp-bg" onclick="bgClick(event,'grp-bg')">
+  <div class="group-sheet">
+    <div class="sheet-hdr">
+      <span class="sheet-title">New Group</span>
+      <button class="sheet-close" onclick="closeGroupSheet()">✕</button>
+    </div>
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+      <input class="gs-input" id="grp-name" placeholder="Group ka naam..." maxlength="40">
+    </div>
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border)">
+      <div style="font-size:.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--sub);margin-bottom:8px">Members Select Karo</div>
+      <div id="selected-members" style="min-height:28px;margin-bottom:6px;flex-wrap:wrap;display:flex"></div>
+    </div>
+    <div class="sheet-search">
+      <input type="text" id="gs" placeholder="Member dhundo..." oninput="filterGrpUsers()">
+    </div>
+    <div class="sheet-list" id="grp-users">
+      {% for u in all_users %}
+      {% if u.phone != me.phone %}
+      <div class="contact gu" data-phone="{{ u.phone }}" data-n="{{ u.name|lower }}" data-name="{{ u.name }}" data-color="{{ u.color }}" data-letter="{{ u.avatar_letter }}" onclick="toggleMember(this)">
+        <div class="av" style="background:{{ u.color }}">
+          {% if u.dp %}<img src="{{ u.dp }}" alt="">{% else %}{{ u.avatar_letter }}{% endif %}
+        </div>
+        <div class="info">
+          <div class="row1"><span class="cname">{{ u.name }}</span></div>
+          <div class="row2"><span class="clast">{{ u.phone }}</span></div>
+        </div>
+        <span class="mem-check" style="font-size:1.2rem;color:var(--sub)">○</span>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    <div style="padding:14px 16px">
+      <button class="create-btn" onclick="createGroup()">Create Group 🚀</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast" onclick="goToast()">
+  <div class="t-av" id="t-av"></div>
+  <div>
+    <div class="t-name" id="t-name"></div>
+    <div class="t-text" id="t-text"></div>
+  </div>
+</div>
+
+<script>
+const socket=io();
+let toastUrl='';
+let selectedMembers={};
+
+// Tab switching
+function switchTab(name,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// Socket events
+socket.on('status',d=>{
+  const id=d.phone.replace('+','');
+  const el=document.getElementById('c-'+id);
+  if(!el) return;
+  const av=el.querySelector('.av');
+  if(d.online){ if(!av.querySelector('.online-dot')){ const dot=document.createElement('div');dot.className='online-dot';av.appendChild(dot); } }
+  else { const dot=av.querySelector('.online-dot'); if(dot) dot.remove(); }
+});
+
+socket.on('notification',d=>{
+  toastUrl = d.chat_type==='group' ? '/group/'+d.chat_id : '/chat/'+d.chat_id;
+  const av=document.getElementById('t-av');
+  av.style.background=d.color;
+  if(d.dp){ av.innerHTML=`<img src="${d.dp}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`; }
+  else { av.textContent=d.name[0].toUpperCase(); }
+  document.getElementById('t-name').textContent=d.name;
+  document.getElementById('t-text').textContent=d.text;
+  const t=document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),4000);
+});
+
+function goToast(){ if(toastUrl) location.href=toastUrl; }
+
+function filterList(){
+  const q=document.getElementById('srch').value.toLowerCase();
+  document.querySelectorAll('.contact:not(.su):not(.gu)').forEach(el=>{
+    const n=el.querySelector('.cname').textContent.toLowerCase();
+    el.style.display=n.includes(q)?'':'none';
+  });
+}
+function filterSheet(){
+  const q=document.getElementById('ss').value.toLowerCase();
+  document.querySelectorAll('.su').forEach(el=>{
+    el.style.display=(el.dataset.n.includes(q)||el.dataset.p.includes(q))?'':'none';
+  });
+}
+function filterGrpUsers(){
+  const q=document.getElementById('gs').value.toLowerCase();
+  document.querySelectorAll('.gu').forEach(el=>{
+    el.style.display=el.dataset.n.includes(q)?'':'none';
+  });
+}
+
+function openSheet(){ document.getElementById('sheet-bg').classList.add('open'); setTimeout(()=>document.getElementById('ss').focus(),200); }
+function closeSheet(){ document.getElementById('sheet-bg').classList.remove('open'); }
+function openGroupSheet(){ document.getElementById('grp-bg').classList.add('open'); }
+function closeGroupSheet(){ document.getElementById('grp-bg').classList.remove('open'); }
+function bgClick(e,id){ if(e.target===document.getElementById(id)) { if(id==='sheet-bg') closeSheet(); else closeGroupSheet(); } }
+
+function toggleMember(el){
+  const p=el.dataset.phone, n=el.dataset.name, c=el.dataset.color, l=el.dataset.letter;
+  const chk=el.querySelector('.mem-check');
+  if(selectedMembers[p]){
+    delete selectedMembers[p];
+    chk.textContent='○'; chk.style.color='var(--sub)';
+    const chip=document.getElementById('chip-'+p.replace('+',''));
+    if(chip) chip.remove();
+  } else {
+    selectedMembers[p]={name:n,color:c,letter:l};
+    chk.textContent='✓'; chk.style.color='var(--green)';
+    const chip=document.createElement('div');
+    chip.className='member-chip';
+    chip.id='chip-'+p.replace('+','');
+    chip.innerHTML=`<div class="av-sm" style="background:${c}">${l}</div>${n}<span class="rm" onclick="removeMember('${p}')">✕</span>`;
+    document.getElementById('selected-members').appendChild(chip);
+  }
+}
+
+function removeMember(p){
+  delete selectedMembers[p];
+  const chip=document.getElementById('chip-'+p.replace('+',''));
+  if(chip) chip.remove();
+  const el=document.querySelector(`.gu[data-phone="${p}"]`);
+  if(el){ el.querySelector('.mem-check').textContent='○'; el.querySelector('.mem-check').style.color='var(--sub)'; }
+}
+
+async function createGroup(){
+  const name=document.getElementById('grp-name').value.trim();
+  const members=Object.keys(selectedMembers);
+  if(!name){ alert('Group naam daalo!'); return; }
+  if(members.length===0){ alert('Kam az kam ek member add karo!'); return; }
+  const r=await fetch('/create_group',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,members})});
+  const d=await r.json();
+  if(d.ok) location.href='/group/'+d.gid;
+  else alert(d.msg||'Error creating group');
+}
+
+function toggleMenu(){
+  document.getElementById('menu').classList.toggle('open');
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.hdr-actions')) document.getElementById('menu').classList.remove('open');
+});
+</script>
+</body>
+</html>

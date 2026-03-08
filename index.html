@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>CSK Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--green:#25D366;--dark-green:#128C7E;--teal:#075E54;--bg:#0a1628;--surface:#111f2e;--border:#1e3448;--text:#e9edef;--sub:#8696a0;--light-green:#dcf8c6}
+body{min-height:100vh;background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;position:relative;overflow:hidden}
+
+/* Animated background */
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -20%,rgba(7,94,84,.5),transparent),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(37,211,102,.08),transparent);z-index:0;pointer-events:none}
+.bg-circles{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg-circles span{position:absolute;border-radius:50%;animation:float 8s ease-in-out infinite}
+.bg-circles span:nth-child(1){width:300px;height:300px;background:rgba(37,211,102,.03);top:-100px;left:-100px;animation-delay:0s}
+.bg-circles span:nth-child(2){width:200px;height:200px;background:rgba(7,94,84,.05);bottom:100px;right:-50px;animation-delay:3s}
+.bg-circles span:nth-child(3){width:150px;height:150px;background:rgba(37,211,102,.04);top:50%;left:80%;animation-delay:5s}
+@keyframes float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-30px) scale(1.05)}}
+
+.card{position:relative;z-index:1;background:rgba(17,31,46,.95);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:24px;width:min(420px,100%);overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.6),0 0 0 1px rgba(37,211,102,.1)}
+
+.card-top{background:linear-gradient(135deg,var(--teal) 0%,#0a2d26 100%);padding:44px 32px 32px;text-align:center;position:relative;overflow:hidden}
+.card-top::after{content:'';position:absolute;bottom:-40px;left:-40px;right:-40px;height:80px;background:rgba(17,31,46,.95);transform:skewY(-2deg)}
+.logo-wrap{position:relative;display:inline-block;margin-bottom:20px}
+.logo-ring{position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(37,211,102,.3);animation:pulse-ring 2s ease-in-out infinite}
+.logo-circle{width:84px;height:84px;background:linear-gradient(135deg,var(--green),var(--dark-green));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2.4rem;box-shadow:0 8px 32px rgba(37,211,102,.4)}
+@keyframes pulse-ring{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.1);opacity:1}}
+.app-name{font-size:1.8rem;font-weight:800;color:#fff;letter-spacing:-.5px;position:relative;z-index:1}
+.app-tag{font-size:.75rem;color:rgba(255,255,255,.5);margin-top:4px;letter-spacing:1px;text-transform:uppercase;position:relative;z-index:1}
+
+.card-body{padding:36px 28px 28px}
+
+.step{display:none}
+.step.active{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.field-label{font-size:.68rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--sub);margin-bottom:10px}
+
+.phone-wrap{display:flex;gap:8px;margin-bottom:8px}
+.cc-input{width:76px;padding:13px 10px;background:rgba(255,255,255,.04);border:2px solid var(--border);border-radius:14px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:.9rem;text-align:center;outline:none;transition:.2s}
+.cc-input:focus{border-color:var(--green);background:rgba(37,211,102,.05)}
+.num-input{flex:1;padding:13px 16px;background:rgba(255,255,255,.04);border:2px solid var(--border);border-radius:14px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:.95rem;outline:none;transition:.2s}
+.num-input:focus{border-color:var(--green);background:rgba(37,211,102,.05)}
+input::placeholder{color:rgba(255,255,255,.18)}
+
+.hint{font-size:.72rem;color:var(--sub);margin-bottom:22px;line-height:1.6}
+
+.btn-green{width:100%;padding:15px;background:linear-gradient(135deg,var(--green),var(--dark-green));border:none;border-radius:14px;color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;transition:.2s;letter-spacing:.3px;box-shadow:0 4px 20px rgba(37,211,102,.3)}
+.btn-green:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(37,211,102,.4)}
+.btn-green:active{transform:translateY(0)}
+.btn-green:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+.otp-grid{display:flex;gap:8px;justify-content:center;margin-bottom:8px}
+.otp-box{width:46px;height:54px;background:rgba(255,255,255,.04);border:2px solid var(--border);border-radius:12px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:1.4rem;font-weight:700;text-align:center;outline:none;transition:.2s}
+.otp-box:focus{border-color:var(--green);background:rgba(37,211,102,.06);box-shadow:0 0 0 3px rgba(37,211,102,.1)}
+
+.name-input{width:100%;padding:14px 16px;background:rgba(255,255,255,.04);border:2px solid var(--border);border-radius:14px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:.95rem;outline:none;transition:.2s;margin-bottom:8px}
+.name-input:focus{border-color:var(--green);background:rgba(37,211,102,.05)}
+
+.phone-show{font-size:1.05rem;font-weight:700;color:var(--green);text-align:center;margin-bottom:4px}
+.change-link{font-size:.74rem;color:var(--sub);text-align:center;cursor:pointer;margin-bottom:22px;transition:.2s}
+.change-link:hover{color:var(--green)}
+
+.alert{padding:11px 14px;border-radius:12px;font-size:.8rem;margin-bottom:14px;display:none}
+.alert.err{background:rgba(255,80,80,.08);border:1px solid rgba(255,80,80,.2);color:#ff6b6b;display:block}
+.alert.ok{background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.2);color:var(--green);display:block}
+
+.dev-alert{background:rgba(255,200,0,.07);border:1px solid rgba(255,200,0,.2);border-radius:12px;padding:10px 14px;font-size:.78rem;color:#ffd700;margin-bottom:14px;display:none}
+.dev-alert.show{display:block}
+
+.resend-row{text-align:center;margin-top:14px;font-size:.78rem;color:var(--sub)}
+.resend-row b{color:var(--green);cursor:pointer}
+
+.divider{height:1px;background:var(--border);margin:22px 0}
+.footer-txt{text-align:center;font-size:.7rem;color:var(--sub);line-height:1.7}
+.footer-txt span{color:var(--green)}
+
+/* Loading spinner */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="bg-circles"><span></span><span></span><span></span></div>
+<div class="card">
+  <div class="card-top">
+    <div class="logo-wrap">
+      <div class="logo-ring"></div>
+      <div class="logo-circle">💬</div>
+    </div>
+    <div class="app-name">CSK Chat</div>
+    <div class="app-tag">Fast · Secure · Simple</div>
+  </div>
+  <div class="card-body">
+
+    <!-- Step 1: Phone -->
+    <div class="step active" id="s1">
+      <div class="field-label">Phone Number</div>
+      <div class="phone-wrap">
+        <input class="cc-input" id="cc" value="+92" maxlength="5">
+        <input class="num-input" id="ph" type="tel" placeholder="3XX XXXXXXX" maxlength="11">
+      </div>
+      <div class="hint">🇵🇰 Pakistan: +92 &nbsp;|&nbsp; 🇮🇳 India: +91 &nbsp;|&nbsp; 🇦🇪 UAE: +971</div>
+      <div class="alert" id="a1"></div>
+      <button class="btn-green" id="b1" onclick="doSendOTP()">Send OTP →</button>
+      <div class="divider"></div>
+      <div class="footer-txt">Aapka number <span>safe</span> hai — kisi ke sath share nahi hoga.</div>
+    </div>
+
+    <!-- Step 2: OTP -->
+    <div class="step" id="s2">
+      <div class="phone-show" id="ph-show"></div>
+      <div class="change-link" onclick="goBack()">← Number change karo</div>
+      <div class="field-label">Verification Code</div>
+      <div class="otp-grid">
+        <input class="otp-box" id="o1" type="number" min="0" max="9" oninput="nxt(this,'o2')">
+        <input class="otp-box" id="o2" type="number" min="0" max="9" oninput="nxt(this,'o3')">
+        <input class="otp-box" id="o3" type="number" min="0" max="9" oninput="nxt(this,'o4')">
+        <input class="otp-box" id="o4" type="number" min="0" max="9" oninput="nxt(this,'o5')">
+        <input class="otp-box" id="o5" type="number" min="0" max="9" oninput="nxt(this,'o6')">
+        <input class="otp-box" id="o6" type="number" min="0" max="9" oninput="nxt(this,null)">
+      </div>
+      <div class="hint">SMS mein aaya 6-digit code daalo</div>
+      <div class="dev-alert" id="dev-box"></div>
+      <div class="alert" id="a2"></div>
+      <button class="btn-green" id="b2" onclick="doVerify()">Verify ✓</button>
+      <div class="resend-row">Code nahi aaya? <b onclick="doSendOTP()">Resend</b></div>
+    </div>
+
+    <!-- Step 3: Name -->
+    <div class="step" id="s3">
+      <div class="field-label">Apna Naam</div>
+      <input class="name-input" id="nm" type="text" placeholder="Naam likho..." maxlength="25">
+      <div class="hint">Ye naam doosron ko dikhega</div>
+      <div class="alert" id="a3"></div>
+      <button class="btn-green" onclick="doName()">CSK Chat Shuru Karo 🚀</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let phone='', otp='';
+const show=(id,txt,type)=>{const e=document.getElementById(id);e.textContent=txt;e.className=`alert ${type}`;};
+const hide=id=>{document.getElementById(id).className='alert';};
+const go=(from,to)=>{document.getElementById(from).classList.remove('active');document.getElementById(to).classList.add('active');};
+function fullPhone(){ return (document.getElementById('cc').value.trim()+document.getElementById('ph').value.trim()); }
+
+async function doSendOTP(){
+  phone=fullPhone();
+  if(phone.replace('+','').length<10){show('a1','Valid number daalo','err');return;}
+  const btn=document.getElementById('b1');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Sending...';hide('a1');
+  const r=await fetch('/send_otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone})});
+  const d=await r.json();
+  btn.disabled=false;btn.textContent='Send OTP →';
+  if(d.ok){
+    document.getElementById('ph-show').textContent=phone;
+    go('s1','s2');
+    document.getElementById('o1').focus();
+    if(d.dev_otp){
+      const db=document.getElementById('dev-box');
+      db.textContent=`⚠️ DEV MODE — OTP: ${d.dev_otp}`;
+      db.classList.add('show');
+    }
+  } else show('a1',d.msg,'err');
+}
+
+function nxt(el,nid){
+  if(el.value.toString().length>1) el.value=el.value.toString().slice(-1);
+  if(el.value&&nid) document.getElementById(nid).focus();
+  if(getOTP().length===6) doVerify();
+}
+
+function getOTP(){ return ['o1','o2','o3','o4','o5','o6'].map(i=>document.getElementById(i).value).join(''); }
+
+async function doVerify(){
+  otp=getOTP();
+  if(otp.length!==6){show('a2','6 digit daalo','err');return;}
+  const btn=document.getElementById('b2');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Verifying...';hide('a2');
+  const r=await fetch('/verify_otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,otp,name:''})});
+  const d=await r.json();
+  btn.disabled=false;btn.textContent='Verify ✓';
+  if(d.ok){
+    if(d.need_name){ go('s2','s3'); document.getElementById('nm').focus(); }
+    else if(d.redirect) location.href=d.redirect;
+  } else {
+    show('a2',d.msg,'err');
+    ['o1','o2','o3','o4','o5','o6'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('o1').focus();
+  }
+}
+
+async function doName(){
+  const name=document.getElementById('nm').value.trim();
+  if(!name){show('a3','Naam zaroori hai','err');return;}
+  hide('a3');
+  const r=await fetch('/verify_otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,otp,name})});
+  const d=await r.json();
+  if(d.ok&&d.redirect) location.href=d.redirect;
+  else show('a3',d.msg||'Error. Try again.','err');
+}
+
+function goBack(){
+  go('s2','s1');
+  ['o1','o2','o3','o4','o5','o6'].forEach(i=>document.getElementById(i).value='');
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    if(document.getElementById('s1').classList.contains('active')) doSendOTP();
+    else if(document.getElementById('s3').classList.contains('active')) doName();
+  }
+});
+</script>
+</body>
+</html>

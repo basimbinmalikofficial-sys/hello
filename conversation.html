@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>{{ other.name }} — CSK Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--green:#25D366;--dark-green:#128C7E;--teal:#075E54;--bg:#0b141a;--surface:#1f2c34;--border:#2a3942;--text:#e9edef;--sub:#8696a0;--out:#005c4b;--in:#1f2c34}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);display:flex;flex-direction:column}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ccircle cx='40' cy='40' r='1.5' fill='%23ffffff07'/%3E%3C/svg%3E");z-index:0;pointer-events:none}
+
+/* Header */
+.hdr{background:linear-gradient(135deg,#075E54,#0a3d35);padding:8px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0;position:relative;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.back{background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;padding:4px 8px;border-radius:8px;transition:.15s}
+.back:hover{background:rgba(255,255,255,.1)}
+.hdr-av{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.95rem;color:#fff;flex-shrink:0;cursor:pointer;overflow:hidden}
+.hdr-av img{width:100%;height:100%;object-fit:cover}
+.hdr-info{flex:1;cursor:pointer}
+.hdr-name{font-weight:700;font-size:.95rem;color:#fff}
+.hdr-status{font-size:.7rem;color:rgba(255,255,255,.6)}
+.hdr-status.on{color:#a8f0c6}
+.hdr-more{background:none;border:none;color:rgba(255,255,255,.85);font-size:1.3rem;cursor:pointer;padding:6px;border-radius:50%;transition:.15s}
+.hdr-more:hover{background:rgba(255,255,255,.1)}
+
+/* Messages */
+.msgs{flex:1;overflow-y:auto;padding:10px 10px 6px;display:flex;flex-direction:column;gap:1px;position:relative;z-index:1}
+.msgs::-webkit-scrollbar{width:4px}
+.msgs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
+
+.date-chip{text-align:center;margin:10px 0}
+.date-chip span{background:rgba(11,20,26,.85);color:var(--sub);font-size:.67rem;padding:4px 12px;border-radius:8px;font-weight:600}
+
+.mw{display:flex;flex-direction:column;margin:1px 0;position:relative}
+.mw.out{align-items:flex-end}
+.mw.in{align-items:flex-start}
+
+.bbl{max-width:min(320px,75vw);padding:6px 9px 5px;border-radius:8px;position:relative;word-break:break-word;animation:pop .2s ease-out;cursor:pointer}
+@keyframes pop{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
+.mw.out .bbl{background:var(--out);border-radius:8px 2px 8px 8px}
+.mw.in  .bbl{background:var(--in);border-radius:2px 8px 8px 8px}
+.mw.out .bbl.deleted{background:rgba(0,92,75,.3);font-style:italic}
+.mw.in  .bbl.deleted{background:rgba(31,44,52,.4);font-style:italic}
+
+/* Reply preview in bubble */
+.reply-preview{background:rgba(0,0,0,.2);border-left:3px solid var(--green);border-radius:4px;padding:5px 8px;margin-bottom:5px;font-size:.75rem;cursor:pointer}
+.reply-preview .rp-name{color:var(--green);font-weight:700;font-size:.7rem;margin-bottom:2px}
+.reply-preview .rp-text{color:rgba(255,255,255,.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+
+.bbl-txt{font-size:.87rem;line-height:1.45;color:var(--text)}
+.bbl-txt.deleted{color:var(--sub)}
+.bbl-ft{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:2px}
+.bbl-time{font-size:.58rem;color:rgba(255,255,255,.35)}
+.tick-sent{font-size:.66rem;color:rgba(255,255,255,.35)}
+.tick-seen{font-size:.66rem;color:#53bdeb}
+
+/* Media */
+.media-img{max-width:min(260px,70vw);max-height:200px;border-radius:8px;display:block;cursor:pointer;margin-bottom:3px}
+.media-vid{max-width:min(260px,70vw);max-height:200px;border-radius:8px;display:block;margin-bottom:3px}
+.media-audio{width:min(240px,68vw);margin-bottom:3px}
+.file-attach{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border-radius:8px;padding:8px 10px;margin-bottom:3px;min-width:180px;cursor:pointer;text-decoration:none;color:inherit}
+.file-icon{font-size:1.6rem;flex-shrink:0}
+.file-info .fname{font-size:.8rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
+.file-info .fsize{font-size:.68rem;color:var(--sub)}
+
+/* Reactions */
+.reactions{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+.react-pill{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:2px 7px;font-size:.78rem;cursor:pointer;transition:.15s;display:flex;align-items:center;gap:3px}
+.react-pill:hover{background:rgba(255,255,255,.1)}
+.react-pill.mine{border-color:var(--green);background:rgba(37,211,102,.1)}
+.react-count{font-size:.7rem;color:var(--sub)}
+
+/* Typing */
+.typing-row{display:none;align-items:flex-end;gap:6px;padding:4px 0}
+.typing-row.show{display:flex}
+.typing-bbl{background:var(--in);padding:10px 14px;border-radius:2px 8px 8px 8px;display:flex;gap:4px}
+.typing-bbl span{width:7px;height:7px;background:var(--sub);border-radius:50%;animation:tdot .9s ease-in-out infinite}
+.typing-bbl span:nth-child(2){animation-delay:.2s}
+.typing-bbl span:nth-child(3){animation-delay:.4s}
+@keyframes tdot{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-7px)}}
+
+/* Empty */
+.empty-chat{display:flex;justify-content:center;padding:16px 0}
+.empty-chat span{background:rgba(11,20,26,.7);color:var(--sub);font-size:.7rem;padding:5px 14px;border-radius:10px}
+
+/* Reply bar */
+.reply-bar{background:var(--surface);border-top:2px solid var(--green);padding:8px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0;position:relative;z-index:10;display:none}
+.reply-bar.show{display:flex}
+.rb-content{flex:1}
+.rb-name{font-size:.72rem;color:var(--green);font-weight:700}
+.rb-text{font-size:.8rem;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100vw - 100px)}
+.rb-close{background:none;border:none;color:var(--sub);font-size:1.2rem;cursor:pointer;padding:4px}
+
+/* Input area */
+.input-area{padding:6px 10px 8px;background:var(--bg);display:flex;align-items:flex-end;gap:8px;flex-shrink:0;position:relative;z-index:10}
+.attach-btn{width:40px;height:40px;border-radius:50%;background:transparent;border:none;color:var(--sub);font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0}
+.attach-btn:hover{color:var(--green)}
+.txt-wrap{flex:1;background:var(--surface);border-radius:24px;padding:8px 16px;display:flex;align-items:flex-end}
+.txt-in{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:.9rem;resize:none;max-height:120px;line-height:1.4}
+.txt-in::placeholder{color:var(--sub)}
+.send{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--dark-green));border:none;color:#fff;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.2s;box-shadow:0 2px 12px rgba(37,211,102,.35)}
+.send:hover{transform:scale(1.08)}
+.send:active{transform:scale(.95)}
+.send:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* Emoji picker */
+.emoji-picker{position:absolute;bottom:65px;left:10px;right:10px;background:var(--surface);border-radius:16px;padding:14px;border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:50;display:none}
+.emoji-picker.show{display:block}
+.emoji-grid{display:flex;flex-wrap:wrap;gap:4px}
+.e-btn{font-size:1.5rem;cursor:pointer;padding:4px;border-radius:8px;transition:.15s;background:none;border:none;line-height:1}
+.e-btn:hover{background:rgba(255,255,255,.1);transform:scale(1.2)}
+
+/* Context menu */
+.ctx-menu{position:fixed;background:var(--surface);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.6);z-index:300;min-width:180px;overflow:hidden;border:1px solid var(--border);display:none;animation:fadeIn .15s ease}
+@keyframes fadeIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.ctx-item{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;font-size:.86rem;transition:.15s}
+.ctx-item:hover{background:var(--hover)}
+.ctx-item.danger{color:#ff6b6b}
+.ctx-divider{height:1px;background:var(--border)}
+
+/* Reaction picker */
+.react-picker{position:fixed;background:var(--surface);border-radius:40px;padding:8px 12px;box-shadow:0 8px 28px rgba(0,0,0,.5);z-index:301;display:flex;gap:6px;border:1px solid var(--border);animation:popIn .2s ease}
+@keyframes popIn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+.rp-e{font-size:1.6rem;cursor:pointer;padding:2px;transition:.15s;line-height:1}
+.rp-e:hover{transform:scale(1.35)}
+
+/* Image viewer */
+.img-viewer{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:500;display:none;align-items:center;justify-content:center;flex-direction:column}
+.img-viewer.open{display:flex}
+.img-viewer img{max-width:95vw;max-height:85vh;object-fit:contain;border-radius:8px}
+.iv-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:1.4rem;cursor:pointer;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.iv-dl{position:absolute;bottom:20px;background:var(--green);border:none;color:#fff;padding:10px 24px;border-radius:24px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.88rem}
+
+/* Upload progress */
+.upload-progress{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 20px;z-index:200;display:none;align-items:center;gap:10px;font-size:.84rem}
+.upload-progress.show{display:flex}
+.prog-bar{width:120px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:var(--green);border-radius:2px;transition:.2s;width:0%}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="hdr">
+  <button class="back" onclick="location.href='/home'">←</button>
+  <div class="hdr-av" style="background:{{ other.color }}">
+    {% if other.dp %}<img src="{{ other.dp }}" alt="">{% else %}{{ other.avatar_letter }}{% endif %}
+  </div>
+  <div class="hdr-info">
+    <div class="hdr-name">{{ other.name }}</div>
+    <div class="hdr-status {% if online %}on{% endif %}" id="status">
+      {% if online %}online{% else %}last seen recently{% endif %}
+    </div>
+  </div>
+  <button class="hdr-more" onclick="toggleHdrMenu()">⋮</button>
+</div>
+
+<!-- Messages -->
+<div class="msgs" id="msgs">
+  {% if not messages %}
+  <div class="empty-chat"><span>🔒 Messages are end-to-end private</span></div>
+  {% endif %}
+
+  {% for m in messages %}
+  {% if not m.get('deleted') and m.phone not in m.get('deleted_for',[]) %}
+  <div class="mw {% if m.from == me.phone %}out{% else %}in{% endif %}" id="mw-{{ m.id }}">
+    <div class="bbl {% if m.get('deleted') %}deleted{% endif %}" id="bbl-{{ m.id }}"
+         oncontextmenu="showCtx(event,'{{ m.id }}','{{ m.from }}','{{ m.type }}','{{ m.from == me.phone }}')"
+         ondblclick="startReply('{{ m.id }}','{{ m.from }}','{{ (m.text or '') | replace("'","") }}')"
+         ontouchstart="touchStart('{{ m.id }}','{{ m.from }}','{{ (m.text or '') | replace("'","") }}')" ontouchend="touchEnd()">
+      {% if m.get('reply_to') %}
+      <div class="reply-preview" onclick="scrollToMsg('{{ m.reply_to.id }}')">
+        <div class="rp-name">{{ m.reply_to.name }}</div>
+        <div class="rp-text">{{ m.reply_to.text }}</div>
+      </div>
+      {% endif %}
+      {% if m.get('deleted') %}
+        <div class="bbl-txt deleted">🚫 This message was deleted</div>
+      {% elif m.type == 'image' %}
+        <img class="media-img" src="{{ m.file_url }}" onclick="openViewer('{{ m.file_url }}')" loading="lazy">
+        {% if m.text %}<div class="bbl-txt">{{ m.text }}</div>{% endif %}
+      {% elif m.type == 'video' %}
+        <video class="media-vid" controls src="{{ m.file_url }}" preload="metadata"></video>
+        {% if m.text %}<div class="bbl-txt">{{ m.text }}</div>{% endif %}
+      {% elif m.type == 'audio' %}
+        <audio class="media-audio" controls src="{{ m.file_url }}"></audio>
+      {% elif m.type == 'file' %}
+        <a class="file-attach" href="{{ m.file_url }}" download="{{ m.filename }}" target="_blank">
+          <div class="file-icon">📎</div>
+          <div class="file-info">
+            <div class="fname">{{ m.filename or 'File' }}</div>
+            <div class="fsize">Tap to download</div>
+          </div>
+        </a>
+      {% else %}
+        <div class="bbl-txt">{{ m.text }}</div>
+      {% endif %}
+      <div class="bbl-ft">
+        <span class="bbl-time">{{ m.time }}</span>
+        {% if m.from == me.phone %}
+        <span class="{% if m.seen %}tick-seen{% else %}tick-sent{% endif %}" id="tk-{{ m.id }}">
+          {% if m.seen %}✓✓{% else %}✓{% endif %}
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    {% if m.get('reactions') %}
+    <div class="reactions" id="reacts-{{ m.id }}">
+      {% for emoji, phones in m.reactions.items() %}
+      {% if phones %}
+      <div class="react-pill {% if me.phone in phones %}mine{% endif %}"
+           onclick="sendReaction('{{ m.id }}','{{ emoji }}')">
+        {{ emoji }}<span class="react-count">{{ phones|length }}</span>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="reactions" id="reacts-{{ m.id }}"></div>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% endfor %}
+
+  <!-- Typing -->
+  <div class="typing-row" id="typing-row">
+    <div class="typing-bbl"><span></span><span></span><span></span></div>
+  </div>
+</div>
+
+<!-- Reply Bar -->
+<div class="reply-bar" id="reply-bar">
+  <div style="color:var(--green);font-size:1.1rem">↩</div>
+  <div class="rb-content">
+    <div class="rb-name" id="rb-name"></div>
+    <div class="rb-text" id="rb-text"></div>
+  </div>
+  <button class="rb-close" onclick="cancelReply()">✕</button>
+</div>
+
+<!-- Emoji Picker -->
+<div class="emoji-picker" id="emoji-picker">
+  <div class="emoji-grid">
+    {% for e in ['😀','😂','😍','🥰','😎','🤔','😅','🙏','👍','❤️','🔥','✨','🎉','💯','😭','🤣','😊','🥳','💪','👏','🙌','🤩','😏','😔','🥺','😡','😤','🤯','🤗','😴','🤤','🤑','👀','💀','🫡','🫶'] %}
+    <button class="e-btn" onclick="insertEmoji('{{ e }}')">{{ e }}</button>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Input Area -->
+<div class="input-area">
+  <button class="attach-btn" onclick="toggleEmoji()" id="emoji-btn" title="Emoji">😊</button>
+  <input type="file" id="file-input" style="display:none" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip" onchange="handleFile(this)">
+  <button class="attach-btn" onclick="document.getElementById('file-input').click()" title="Attach">📎</button>
+  <div class="txt-wrap">
+    <textarea class="txt-in" id="inp" placeholder="Message..." rows="1" maxlength="2000"></textarea>
+  </div>
+  <button class="send" id="send" onclick="sendMsg()" disabled>➤</button>
+</div>
+
+<!-- Context Menu -->
+<div class="ctx-menu" id="ctx-menu">
+  <div class="ctx-item" onclick="ctxReact()">😊 React</div>
+  <div class="ctx-item" onclick="ctxReply()">↩ Reply</div>
+  <div class="ctx-item" onclick="ctxCopy()">📋 Copy</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item danger" id="ctx-delete" onclick="ctxDelete()">🗑️ Delete</div>
+</div>
+
+<!-- Reaction Picker -->
+<div class="react-picker" id="react-picker">
+  {% for e in ['❤️','😂','😮','😢','👍','🙏'] %}
+  <div class="rp-e" onclick="sendReaction(currentMsgId,'{{ e }}');closeReactPicker()">{{ e }}</div>
+  {% endfor %}
+</div>
+
+<!-- Image Viewer -->
+<div class="img-viewer" id="img-viewer">
+  <button class="iv-close" onclick="closeViewer()">✕</button>
+  <img id="iv-img" src="" alt="">
+  <button class="iv-dl" onclick="downloadViewer()">⬇ Download</button>
+</div>
+
+<!-- Upload Progress -->
+<div class="upload-progress" id="upload-prog">
+  <span>Uploading...</span>
+  <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+</div>
+
+<script>
+const ME='{{ me.phone }}', ME_NAME='{{ me.name }}';
+const OTHER='{{ other.phone }}', OTHER_NAME='{{ other.name }}';
+const CHAT_ID=[ME,OTHER].sort().join('_');
+const socket=io();
+const msgsEl=document.getElementById('msgs');
+const inp=document.getElementById('inp');
+const sendBtn=document.getElementById('send');
+const typRow=document.getElementById('typing-row');
+let tTimer=null, typing=false;
+let currentMsgId=null, currentMsgFrom=null, currentMsgType=null, currentMsgIsOut=false;
+let replyTo=null;
+let longPressTimer=null;
+
+scrollB();
+socket.emit('join',{phone:OTHER});
+socket.emit('seen',{from:OTHER});
+
+function scrollB(s){ msgsEl.scrollTo({top:msgsEl.scrollHeight,behavior:s?'smooth':'auto'}); }
+
+function esc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+
+function rmEmpty(){ const e=msgsEl.querySelector('.empty-chat'); if(e) e.remove(); }
+
+function buildBubble(m, isOut){
+  let content='';
+  if(m.deleted){
+    content='<div class="bbl-txt deleted">🚫 This message was deleted</div>';
+  } else if(m.type==='image'){
+    content=`<img class="media-img" src="${m.file_url}" onclick="openViewer('${m.file_url}')" loading="lazy">`;
+    if(m.text) content+=`<div class="bbl-txt">${esc(m.text)}</div>`;
+  } else if(m.type==='video'){
+    content=`<video class="media-vid" controls src="${m.file_url}" preload="metadata"></video>`;
+    if(m.text) content+=`<div class="bbl-txt">${esc(m.text)}</div>`;
+  } else if(m.type==='audio'){
+    content=`<audio class="media-audio" controls src="${m.file_url}"></audio>`;
+  } else if(m.type==='file'){
+    content=`<a class="file-attach" href="${m.file_url}" download="${m.filename||'file'}" target="_blank"><div class="file-icon">📎</div><div class="file-info"><div class="fname">${esc(m.filename||'File')}</div><div class="fsize">Tap to download</div></div></a>`;
+  } else {
+    content=`<div class="bbl-txt">${esc(m.text)}</div>`;
+  }
+
+  let replyHtml='';
+  if(m.reply_to){
+    replyHtml=`<div class="reply-preview" onclick="scrollToMsg('${m.reply_to.id}')"><div class="rp-name">${esc(m.reply_to.name)}</div><div class="rp-text">${esc(m.reply_to.text||'')}</div></div>`;
+  }
+
+  const tick=isOut?`<span class="tick-sent" id="tk-${m.id}">✓</span>`:'';
+  return `<div class="bbl" id="bbl-${m.id}"
+    oncontextmenu="showCtx(event,'${m.id}','${m.from}','${m.type||'text'}','${isOut}')"
+    ondblclick="startReply('${m.id}','${m.from}','${(m.text||'').replace(/'/g,'').substring(0,60)}')"
+    ontouchstart="touchStart('${m.id}','${m.from}','${(m.text||'').replace(/'/g,'').substring(0,60)}')" ontouchend="touchEnd()">
+    ${replyHtml}${content}
+    <div class="bbl-ft"><span class="bbl-time">${m.time}</span>${tick}</div>
+  </div>
+  <div class="reactions" id="reacts-${m.id}"></div>`;
+}
+
+function addMsg(m, isOut){
+  rmEmpty();
+  const d=document.createElement('div');
+  d.className=`mw ${isOut?'out':'in'}`;
+  d.id=`mw-${m.id}`;
+  d.innerHTML=buildBubble(m, isOut);
+  msgsEl.insertBefore(d, typRow);
+  scrollB(true);
+}
+
+// Socket events
+socket.on('message',m=>{
+  if((m.from===ME&&m.to===OTHER)||(m.from===OTHER&&m.to===ME)){
+    addMsg(m,m.from===ME);
+    if(m.from===OTHER) socket.emit('seen',{from:OTHER});
+  }
+});
+
+socket.on('typing',d=>{
+  if(d.phone!==OTHER) return;
+  typRow.classList.toggle('show',d.typing);
+  if(d.typing) scrollB(true);
+});
+
+socket.on('seen',()=>{
+  document.querySelectorAll('.tick-sent').forEach(e=>{e.className='tick-seen';e.textContent='✓✓';});
+});
+
+socket.on('status',d=>{
+  if(d.phone!==OTHER) return;
+  const s=document.getElementById('status');
+  s.textContent=d.online?'online':'last seen recently';
+  s.className=`hdr-status ${d.online?'on':''}`;
+});
+
+socket.on('msg_deleted',d=>{
+  if(d.chat_id!==CHAT_ID) return;
+  const bbl=document.getElementById('bbl-'+d.id);
+  if(bbl){
+    bbl.classList.add('deleted');
+    const txt=bbl.querySelector('.bbl-txt')||bbl.querySelector('.media-img, .media-vid, .media-audio, .file-attach');
+    if(txt){ txt.outerHTML='<div class="bbl-txt deleted">🚫 This message was deleted</div>'; }
+    const reacts=document.getElementById('reacts-'+d.id);
+    if(reacts) reacts.innerHTML='';
+  }
+});
+
+socket.on('reaction',d=>{
+  if(d.chat_id!==CHAT_ID) return;
+  const el=document.getElementById('reacts-'+d.id);
+  if(!el) return;
+  el.innerHTML='';
+  Object.entries(d.reactions||{}).forEach(([emoji,phones])=>{
+    if(!phones.length) return;
+    const pill=document.createElement('div');
+    pill.className=`react-pill ${phones.includes(ME)?'mine':''}`;
+    pill.onclick=()=>sendReaction(d.id,emoji);
+    pill.innerHTML=`${emoji}<span class="react-count">${phones.length}</span>`;
+    el.appendChild(pill);
+  });
+});
+
+// Sending
+function sendMsg(){
+  const txt=inp.value.trim();
+  if(!txt) return;
+  const msgData={to:OTHER, text:txt, type:'text'};
+  if(replyTo) msgData.reply_to=replyTo;
+  socket.emit('message',msgData);
+  inp.value=''; inp.style.height='auto'; sendBtn.disabled=true;
+  cancelReply();
+  clearTimeout(tTimer);
+  if(typing){ socket.emit('typing',{to:OTHER,typing:false}); typing=false; }
+}
+
+inp.addEventListener('input',function(){
+  this.style.height='auto';
+  this.style.height=Math.min(this.scrollHeight,120)+'px';
+  sendBtn.disabled=!this.value.trim();
+  if(!typing){ typing=true; socket.emit('typing',{to:OTHER,typing:true}); }
+  clearTimeout(tTimer);
+  tTimer=setTimeout(()=>{ typing=false; socket.emit('typing',{to:OTHER,typing:false}); },2500);
+});
+
+inp.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMsg(); }
+});
+
+// File upload
+async function handleFile(input){
+  const file=input.files[0];
+  if(!file) return;
+  const maxSize=50*1024*1024;
+  if(file.size>maxSize){ alert('File too large! Max 50MB'); return; }
+  
+  const prog=document.getElementById('upload-prog');
+  const fill=document.getElementById('prog-fill');
+  prog.classList.add('show');
+  
+  const reader=new FileReader();
+  reader.onprogress=e=>{ if(e.lengthComputable) fill.style.width=(e.loaded/e.total*70)+'%'; };
+  reader.onload=async e=>{
+    fill.style.width='80%';
+    const r=await fetch('/upload_media',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({data:e.target.result, filename:file.name})});
+    const d=await r.json();
+    fill.style.width='100%';
+    setTimeout(()=>{ prog.classList.remove('show'); fill.style.width='0%'; },500);
+    if(d.ok){
+      const msgData={to:OTHER, text:'', type:d.type, file_url:d.url, filename:file.name};
+      if(replyTo) msgData.reply_to=replyTo;
+      socket.emit('message',msgData);
+      cancelReply();
+    } else alert('Upload failed: '+d.msg);
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+}
+
+// Emoji
+function toggleEmoji(){
+  document.getElementById('emoji-picker').classList.toggle('show');
+}
+function insertEmoji(e){
+  inp.value+=e;
+  inp.focus();
+  sendBtn.disabled=!inp.value.trim();
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#emoji-picker') && !e.target.closest('#emoji-btn'))
+    document.getElementById('emoji-picker').classList.remove('show');
+});
+
+// Context menu
+function showCtx(e, id, from, type, isOut){
+  e.preventDefault();
+  currentMsgId=id; currentMsgFrom=from; currentMsgType=type; currentMsgIsOut=isOut==='True';
+  const menu=document.getElementById('ctx-menu');
+  const del=document.getElementById('ctx-delete');
+  del.style.display=currentMsgIsOut?'flex':'none';
+  menu.style.display='block';
+  const x=Math.min(e.clientX, window.innerWidth-190);
+  const y=Math.min(e.clientY, window.innerHeight-200);
+  menu.style.left=x+'px'; menu.style.top=y+'px';
+}
+document.addEventListener('click',e=>{ if(!e.target.closest('#ctx-menu')) closeCtxMenu(); });
+function closeCtxMenu(){ document.getElementById('ctx-menu').style.display='none'; }
+
+function ctxReact(){
+  closeCtxMenu();
+  const bbl=document.getElementById('bbl-'+currentMsgId);
+  const rp=document.getElementById('react-picker');
+  rp.style.display='flex';
+  const rect=bbl?bbl.getBoundingClientRect():{top:200,left:100};
+  rp.style.top=Math.max(4,rect.top-60)+'px';
+  rp.style.left=Math.min(rect.left, window.innerWidth-270)+'px';
+}
+function closeReactPicker(){ document.getElementById('react-picker').style.display='none'; }
+document.addEventListener('click',e=>{ if(!e.target.closest('#react-picker')&&!e.target.closest('#ctx-menu')) closeReactPicker(); });
+
+function ctxReply(){
+  closeCtxMenu();
+  const bbl=document.getElementById('bbl-'+currentMsgId);
+  const txt=bbl?bbl.querySelector('.bbl-txt'):null;
+  const name=currentMsgFrom===ME?ME_NAME:OTHER_NAME;
+  startReply(currentMsgId, currentMsgFrom, txt?txt.textContent.substring(0,80):'');
+}
+
+function ctxCopy(){
+  closeCtxMenu();
+  const bbl=document.getElementById('bbl-'+currentMsgId);
+  const txt=bbl?bbl.querySelector('.bbl-txt'):null;
+  if(txt) navigator.clipboard.writeText(txt.textContent).catch(()=>{});
+}
+
+async function ctxDelete(){
+  closeCtxMenu();
+  if(!confirm('Delete message?')) return;
+  const r=await fetch('/delete_message',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id:currentMsgId, chat_id:CHAT_ID, for_all:true})});
+  const d=await r.json();
+  if(d.ok){
+    const bbl=document.getElementById('bbl-'+currentMsgId);
+    if(bbl){
+      bbl.classList.add('deleted');
+      bbl.innerHTML='<div class="bbl-txt deleted">🚫 This message was deleted</div><div class="bbl-ft"><span class="bbl-time"></span></div>';
+    }
+  }
+}
+
+async function sendReaction(id, emoji){
+  await fetch('/react_message',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id, emoji, chat_id:CHAT_ID})});
+}
+
+// Reply
+function startReply(id, from, text){
+  replyTo={id, name:from===ME?ME_NAME:OTHER_NAME, text};
+  document.getElementById('rb-name').textContent=replyTo.name;
+  document.getElementById('rb-text').textContent=text||'(media)';
+  document.getElementById('reply-bar').classList.add('show');
+  inp.focus();
+}
+function cancelReply(){
+  replyTo=null;
+  document.getElementById('reply-bar').classList.remove('show');
+}
+
+// Long press for mobile
+function touchStart(id, from, text){
+  longPressTimer=setTimeout(()=>{
+    currentMsgId=id; currentMsgFrom=from; currentMsgIsOut=from===ME;
+    document.getElementById('ctx-menu').style.display='block';
+    document.getElementById('ctx-menu').style.left='50%';
+    document.getElementById('ctx-menu').style.top='40%';
+    document.getElementById('ctx-menu').style.transform='translateX(-50%)';
+    document.getElementById('ctx-delete').style.display=from===ME?'flex':'none';
+  },600);
+}
+function touchEnd(){ clearTimeout(longPressTimer); }
+
+function scrollToMsg(id){
+  const el=document.getElementById('mw-'+id);
+  if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.style.background='rgba(37,211,102,.1)'; setTimeout(()=>el.style.background='',1500); }
+}
+
+// Image viewer
+function openViewer(url){
+  document.getElementById('iv-img').src=url;
+  document.getElementById('img-viewer').classList.add('open');
+}
+function closeViewer(){ document.getElementById('img-viewer').classList.remove('open'); }
+function downloadViewer(){
+  const a=document.createElement('a');
+  a.href=document.getElementById('iv-img').src;
+  a.download='image'; a.click();
+}
+
+function toggleHdrMenu(){} // placeholder
+</script>
+</body>
+</html>
